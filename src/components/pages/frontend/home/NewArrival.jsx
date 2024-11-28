@@ -3,40 +3,10 @@ import Slider from "react-slick";
 import "slick-carousel/slick/slick-theme.css";
 import "slick-carousel/slick/slick.css";
 import CardItem from "./CardItem";
+import { newArrivalArray } from "./new-arrival-data";
 
 const NewArrival = () => {
-  const newArrivalArray = [
-    {
-      img1: "na-card-b1.jpg",
-      img2: "na-card-a1.jpg",
-      title: "Stitched Football Trackpant Indigo",
-      price: "7,700.00",
-    },
-    {
-      img1: "na-card-b2.jpg",
-      img2: "na-card-a2.jpg",
-      title: "Creators Club Lounge Tee Forest",
-      price: "4,150.00",
-    },
-    {
-      img1: "na-card-b3.jpg",
-      img2: "na-card-a3.jpg",
-      title: "Creators Club Lounge Tee Vintage White",
-      price: "4,150.00",
-    },
-    {
-      img1: "na-card-b4.jpg",
-      img2: "na-card-a4.jpg",
-      title: "Beyond Borders Box Tee Black",
-      price: "3,600.00",
-    },
-    {
-      img1: "na-card-b5.jpg",
-      img2: "na-card-a5.jpg",
-      title: "Beyond Borders Box Tee White",
-      price: "3,600.00",
-    },
-  ];
+
 
   var settings = {
     dots: true,
