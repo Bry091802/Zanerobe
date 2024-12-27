@@ -1,5 +1,5 @@
 import { imgPath } from "@/components/helpers/functions-general";
-import { Clapperboard, LayoutDashboard, Shirt, Star } from "lucide-react";
+import { Clapperboard, Flag, LayoutDashboard, Shirt, Star } from "lucide-react";
 import React from "react";
 import { NavLink } from "react-router-dom";
 
@@ -19,6 +19,11 @@ const SideNavigation = ({ menu }) => {
       title: "Category",
       slug: "/admin/category",
       icon: <Star />,
+    },
+    {
+      title: "Banner",
+      slug: "/admin/banner",
+      icon: <Flag />,
     },
   ];
 

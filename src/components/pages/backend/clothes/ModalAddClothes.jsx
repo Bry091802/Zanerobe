@@ -1,6 +1,4 @@
 import useUploadPhoto from "@/components/custom-hook/useUploadPhoto";
-import { StoreContext } from "../store/storeContext";
-import { setIsAdd } from "../store/storeAction";
 import * as Yup from "Yup";
 import { Form, Formik } from "formik";
 import ModalWrapper from "../partials/modals/ModalWrapper";
@@ -14,23 +12,70 @@ import {
 import SpinnerButton from "../partials/spinners/SpinnerButton";
 import React from "react";
 import { imgPath } from "@/components/helpers/functions-general";
+import { StoreContext } from "@/components/store/storeContext";
+import { setIsAdd } from "@/components/store/storeAction";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { queryData } from "@/components/helpers/queryData";
+import useQueryData from "@/components/custom-hook/useQueryData";
 
 const ModalAddClothes = ({ itemEdit }) => {
   const { dispatch } = React.useContext(StoreContext);
-  const { uploadPhoto, handleChangePhoto, photo } = useUploadPhoto("");
+  const { uploadPhoto, handleChangePhoto, photo } =
+    useUploadPhoto("/v2/upload-photo");
+  const [value, setValue] = React.useState("");
 
-  const handleClose = () => {
-    dispatch(setIsAdd(false));
+  const {
+    isLoading,
+    isFetching,
+    error,
+    data: result,
+  } = useQueryData(
+    `/v2/category`, // endpoint
+    "get", // method
+    "category"
+  );
+
+  const queryClient = useQueryClient();
+  const mutation = useMutation({
+    mutationFn: (values) =>
+      queryData(
+        itemEdit ? `/v2/clothes/${itemEdit.clothes_aid}` : `/v2/clothes`,
+        itemEdit ? "put" : "post",
+        values
+      ),
+    onSuccess: (data) => {
+      // Invalidate and refetch
+      queryClient.invalidateQueries({
+        queryKey: ["clothes"],
+      });
+
+      // show error box
+      if (data.success) {
+        dispatch(setIsAdd(false));
+        dispatch(setSuccess(true));
+        dispatch(setMessage("Add"));
+      } else {
+        dispatch(setValidate(true));
+        dispatch(setMessage(data.error));
+      }
+    },
+  });
+
+  const handleClose = () => dispatch(setIsAdd(false));
+  const handleChange = (event) => {
+    setValue(event.target.value);
   };
   const initVal = {
     clothes_title: itemEdit ? itemEdit.clothes_title : "",
     clothes_price: itemEdit ? itemEdit.clothes_price : "",
-    clothes_category: itemEdit ? itemEdit.clothes_category : "",
+    clothes_size: itemEdit ? itemEdit.clothes_size : "",
+    clothes_category_id: itemEdit ? itemEdit.clothes_category_id : "",
   };
   const yupSchema = Yup.object({
     clothes_title: Yup.string().required("Required"),
     clothes_price: Yup.string().required("Required"),
-    clothes_category: Yup.string().required("Required"),
+    clothes_size: Yup.string().required("Required"),
+    clothes_category_id: Yup.string().required("Required"),
   });
   return (
     <>
@@ -47,7 +92,17 @@ const ModalAddClothes = ({ itemEdit }) => {
             initialValues={initVal}
             validationSchema={yupSchema}
             onSubmit={async (values) => {
-              console.log(values);
+              mutation.mutate({
+                ...values,
+                clothes_image:
+                  (itemEdit?.clothes_image === "" && photo) ||
+                  (!photo && "") ||
+                  (photo === undefined && "") ||
+                  (photo && itemEdit?.clothes_image !== photo?.name)
+                    ? photo?.name || ""
+                    : itemEdit?.clothes_image || "",
+              });
+              uploadPhoto();
             }}
           >
             {(props) => {
@@ -56,7 +111,7 @@ const ModalAddClothes = ({ itemEdit }) => {
                   <div className="modal-form  h-full max-h-[calc(100vh-56px)] grid grid-rows-[1fr,_auto]">
                     <div className="form-wrapper p-4 max-h-[85vh] h-full overflow-y-auto custom-scroll">
                       <div className="input-wrap relative  group input-photo-wrap h-[150px] ">
-                        {itemEdit === null ? (
+                        {itemEdit === null && photo === null ? (
                           <div className="w-full border border-line  rounded-md flex justify-center items-center flex-col h-full">
                             <ImagePlusIcon
                               size={50}
@@ -70,7 +125,7 @@ const ModalAddClothes = ({ itemEdit }) => {
                         ) : (
                           <img
                             src={
-                                itemEdit === null
+                              itemEdit === null
                                 ? URL.createObjectURL(photo) // preview
                                 : imgPath + "/" + itemEdit?.clothes_image // check db
                             }
@@ -86,7 +141,9 @@ const ModalAddClothes = ({ itemEdit }) => {
                           title="Upload photo"
                           onChange={(e) => handleChangePhoto(e)}
                           onDrop={(e) => handleChangePhoto(e)}
-                          className={`opacity-0 absolute top-0 right-0 bottom-0 left-0 rounded-full  m-auto cursor-pointer w-full h-full`}
+                          className={`opacity-0 absolute top-0 right-0 bottom-0 left-0 rounded-full  m-auto cursor-pointer w-full h-full ${
+                            mutation.isPending ? "pointer-events-none" : ""
+                          }`}
                         />
                       </div>
 
@@ -105,25 +162,45 @@ const ModalAddClothes = ({ itemEdit }) => {
                         />
                       </div>
                       <div className="input-wrap">
-                        <InputSelect label="Category" name="movie_category">
-                          <option value="" hidden>
-                            Select Category
-                          </option>
-                          <option value="Pants">Pants</option>
-                          <option value="Jacket">Jacket</option>
-                          <option value="Polo">Polo</option>
-                          <option value="T-Shirts">T-Shirts</option>
-                          <option value="Sweater">Sweater</option>
+                        <InputText
+                          label="Size"
+                          type="text"
+                          name="clothes_size"
+                        />
+                      </div>
+                      <div className="input-wrap">
+                        <InputSelect
+                          label="Clothes Category"
+                          name="clothes_category_id"
+                          onClick={handleChange}
+                        >
+                          <option value="hidden"></option>
+                          {result?.data.map((item, key) => {
+                            return (
+                              <>
+                                {item.category_is_active === 1 && (
+                                  <option key={key} value={item.category_aid}>
+                                    {item.category_title}
+                                  </option>
+                                )}
+                                ;
+                              </>
+                            );
+                          })}
                         </InputSelect>
                       </div>
                     </div>
 
                     <div className="form-action flex p-4 justify-end gap-3">
-                      <button className="btn btn-accent">
-                        <SpinnerButton />
-                        Save
+                      <button className="btn btn-accent" type="submit">
+                        {mutation.isPending && <SpinnerButton />}
+                        {itemEdit ? "Save" : "Add"}
                       </button>
-                      <button className="btn btn-cancel" onClick={handleClose}>
+                      <button
+                        className="btn btn-cancel"
+                        onClick={handleClose}
+                        type="reset"
+                      >
                         Cancel
                       </button>
                     </div>

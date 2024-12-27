@@ -1,12 +1,9 @@
-import React from "react";
-import Footer from "../partials/Footer";
-import Header from "../partials/Header";
 import { imgPath } from "@/components/helpers/functions-general";
 import { Star } from "lucide-react";
-import fill from "./../../../../../node_modules/lodash-es/fill";
-import size from "./../../../../../node_modules/lodash-es/size";
 import { useParams } from "react-router-dom";
 import { newArrivalArray } from "../home/new-arrival-data";
+import Footer from "../partials/Footer";
+import Header from "../partials/Header";
 
 const ProductInfo = () => {
   const { slug } = useParams();

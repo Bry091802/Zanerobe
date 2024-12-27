@@ -1,133 +1,253 @@
-import React from "react";
-import { StoreContext } from "../store/storeContext";
+import useQueryData from "@/components/custom-hook/useQueryData";
+import ModalArchive from "@/components/partials/modal/ModalArchive";
+import ModalRestore from "@/components/partials/modal/ModalRestore";
+import Status from "@/components/partials/Status";
 import {
   setIsAdd,
-  setIsConfirm,
+  setIsArchive,
   setIsDelete,
-  setIsView,
-} from "../store/storeAction";
-import { clothes } from "../clothes-data";
-import { Archive, ArchiveRestore, FilePenLine, FileVideo } from "lucide-react";
+  setIsRestore,
+} from "@/components/store/storeAction";
+import { StoreContext } from "@/components/store/storeContext";
+import { Archive, ArchiveRestore, FilePenLine, Trash2 } from "lucide-react";
+import React from "react";
 import LoadMore from "../partials/LoadMore";
-import ModalDelete from "../partials/modals/ModalDelete";
-import ModalConfirm from "../partials/modals/ModalConfirm";
-import Pills from "../partials/Pills";
+import ModalDelete from "@/components/partials/modal/ModalDelete";
+import TableLoader from "../partials/TableLoader";
+import IconNoData from "../partials/IconNoData";
+import IconServerError from "../partials/IconServerError";
+import FetchingSpinner from "@/components/partials/spinner/FetchingSpinner";
+import { useInView } from "react-intersection-observer";
+import { useInfiniteQuery } from "@tanstack/react-query";
+import { queryDataInfinite } from "@/components/helpers/queryDataInfinite";
+import SearchBarWithFilterStatus from "@/components/partials/SearchBarWithFilterStatus";
+import { FaArchive, FaEdit, FaTrash, FaTrashRestore } from "react-icons/fa";
 
-const ClothesTable = ({ setitemEdit }) => {
+const ClothesTable = ({ setItemEdit }) => {
   const { store, dispatch } = React.useContext(StoreContext);
+  const [id, setIsId] = React.useState("");
+  const [isFilter, setIsFilter] = React.useState(false);
+  const [onSearch, setOnSearch] = React.useState(false);
+  const [statusFilter, setStatusFilter] = React.useState("");
+  const search = React.useRef({ value: "" });
+  const [page, setPage] = React.useState(1);
+  const { ref, inView } = useInView();
   let counter = 1;
-
-  const handleArchive = () => {
-    dispatch(setIsConfirm(true));
-  };
 
   const handleEdit = (item) => {
     dispatch(setIsAdd(true));
-    setitemEdit(item);
+    setItemEdit(item);
+    setIsId(item.clothes_aid);
+  };
+  const handleDelete = (item) => {
+    dispatch(setIsDelete(true));
+    setIsId(item.clothes_aid);
+  };
+  const handleRestore = (item) => {
+    dispatch(setIsRestore(true));
+    setIsId(item.clothes_aid);
+  };
+  const handleArchive = (item) => {
+    dispatch(setIsArchive(true));
+    setIsId(item.clothes_aid);
   };
 
-  const handleDelete = () => {
-    dispatch(setIsDelete(true));
-  };
-  const handleRestore = () => {
-    dispatch(setIsConfirm(true));
-  };
+  const {
+    data: result,
+    error,
+    fetchNextPage,
+    hasNextPage,
+    isFetching,
+    isFetchingNextPage,
+    status,
+  } = useInfiniteQuery({
+    queryKey: ["clothes", onSearch, isFilter, statusFilter],
+    queryFn: async ({ pageParam = 1 }) =>
+      await queryDataInfinite(
+        "/v2/clothes/search", // search or filter endpoint
+        `/v2/clothes/page/${pageParam}`, // page api/endpoint
+        isFilter || store.isSearch, // search boolean
+        {
+          isFilter,
+          statusFilter,
+          searchValue: search?.current.value,
+          id: "",
+        } // payload
+      ),
+    getNextPageParam: (lastPage) => {
+      if (lastPage.page < lastPage.total) {
+        return lastPage.page + lastPage.count;
+      }
+      return;
+    },
+    refetchOnWindowFocus: false,
+  });
+
+  React.useEffect(() => {
+    if (inView) {
+      setPage((prev) => prev + 1);
+      fetchNextPage();
+    }
+  }, [inView]);
 
   return (
     <>
+      <div>
+        <SearchBarWithFilterStatus
+          search={search}
+          dispatch={dispatch}
+          store={store}
+          result={result}
+          isFetching={isFetching}
+          setOnSearch={setOnSearch}
+          onSearch={onSearch}
+          statusFilter={statusFilter}
+          setStatusFilter={setStatusFilter}
+          setIsFilter={setIsFilter}
+        />
+      </div>
       <div className="p-4 bg-secondary rounded-md mt-10 border border-line relative">
-        {/* <SpinnerTable/> */}
         <div className="table-wrapper custom-scroll">
-          {/* <TableLoader count={1} cols={4}/> */}
           <table>
             <thead>
               <tr>
                 <th>#</th>
                 <th>Status</th>
                 <th className="w-[30%]">Title</th>
-                <th>Year</th>
-                <th>Duration</th>
+                <th>Price</th>
+                <th>Category</th>
+                <th>Size</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
-              {/* <tr>
-                <td colSpan={100}>
-                 <IconNoData/>
-                                             
-                </td>
-                </tr> */}
-              {/* <tr>
-                <td colSpan={100}>
-                <IconServerError/>
-                 </td>
-                 </tr> */}
-              {clothes.map((item, key) => (
-                <tr key={key}>
-                  <td>{counter++}.</td>
-                  <td>
-                    <Pills />
-                  </td>
-                  <td>{item.clothes_title}</td>
-                  <td>{item.clothes_price}</td>
-                  <td>{item.clothes_category}</td>
-                  <td>
-                    <ul className="table-action">
-                      {true ? (
-                        <>
-                          <li>
-                            <button
-                              className="tooltip"
-                              data-tooltip="Edit"
-                              onClick={() => handleEdit(item)}
-                            >
-                              <FilePenLine />
-                            </button>
-                          </li>
-                          <li>
-                            <button
-                              className="tooltip"
-                              data-tooltip="Archive"
-                              onClick={() => handleArchive()}
-                            >
-                              <Archive />
-                            </button>
-                          </li>
-                        </>
-                      ) : (
-                        <>
-                          <li>
-                            <button
-                              className="tooltip"
-                              data-tooltip="Restore"
-                              onClick={() => handleRestore()}
-                            >
-                              <ArchiveRestore />
-                            </button>
-                          </li>
-                          <li>
-                            <button
-                              className="tooltip"
-                              data-tooltip="Delete"
-                              onClick={handleDelete}
-                            >
-                              <Trash2 />
-                            </button>
-                          </li>
-                        </>
-                      )}
-                    </ul>
+              {(status === "pending" || result?.pages[0].data.length === 0) && (
+                <tr>
+                  <td colSpan="100%" className="p-10">
+                    {status === "pending" ? (
+                      <TableLoader cols={2} count={20} />
+                    ) : (
+                      <IconNoData />
+                    )}
                   </td>
                 </tr>
+              )}
+              {/* ERROR */}
+              {error && (
+                <tr>
+                  <td colSpan="100%">
+                    <IconServerError />
+                  </td>
+                </tr>
+              )}
+
+              {result?.pages.map((page, pageKey) => (
+                <React.Fragment key={pageKey}>
+                  {page.data.map((item, key) => {
+                    return (
+                      <tr key={key} className="group relative cursor-pointer">
+                        <td className="text-center">{counter++}</td>
+                        <td>
+                          {item.clothes_is_active === 1 ? (
+                            <Status text="Active" />
+                          ) : (
+                            <Status text="Inactive" />
+                          )}
+                        </td>
+                        <td>{item.clothes_title}</td>
+                        <td>P{item.clothes_price}.00</td>
+                        <td>{item.category_title}</td>
+                        <td>{item.clothes_size}</td>
+                        <td
+                          colSpan="100%"
+                          className="opacity-0 group-hover:opacity-100"
+                        >
+                          <div className="flex items-center justify-end gap-2 mr-4">
+                            {item.clothes_is_active == 1 ? (
+                              <>
+                                <button
+                                  type="button"
+                                  data-tooltip="Archive"
+                                  className="tooltip"
+                                  disabled={isFetching}
+                                  onClick={() => handleArchive(item)}
+                                >
+                                  <FaArchive />
+                                </button>
+                                <button
+                                  type="button"
+                                  data-tooltip="Edit"
+                                  className="tooltip"
+                                  disabled={isFetching}
+                                  onClick={() => handleEdit(item)}
+                                >
+                                  <FaEdit />
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                <button
+                                  type="button"
+                                  className="tooltip"
+                                  data-tooltip="Delete"
+                                  disabled={isFetching}
+                                  onClick={() => handleRestore(item)}
+                                >
+                                  <FaTrashRestore />
+                                </button>
+                                <button
+                                  type="button"
+                                  className="tooltip"
+                                  data-tooltip="Delete"
+                                  disabled={isFetching}
+                                  onClick={() => handleDelete(item)}
+                                >
+                                  <FaTrash />
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </React.Fragment>
               ))}
             </tbody>
           </table>
-          <LoadMore />
+          <LoadMore
+            fetchNextPage={fetchNextPage}
+            isFetchingNextPage={isFetchingNextPage}
+            hasNextPage={hasNextPage}
+            result={result?.pages[0]}
+            setPage={setPage}
+            page={page}
+            refView={ref}
+          />
         </div>
       </div>
 
-      {store.isDelete && <ModalDelete />}
-      {store.isConfirm && <ModalConfirm />}
+      {store.isDelete && (
+        <ModalDelete
+          setIsDelete={setIsDelete}
+          mysqlApiDelete={`/v2/clothes/${id}`}
+          queryKey={"clothes"}
+        />
+      )}
+      {store.isArchive && (
+        <ModalArchive
+          setIsArchive={setIsArchive}
+          mysqlEndpoint={`/v2/clothes/active/${id}`}
+          queryKey={"clothes"}
+        />
+      )}
+      {store.isRestore && (
+        <ModalRestore
+          setIsRestore={setIsRestore}
+          mysqlEndpoint={`/v2/clothes/active/${id}`}
+          queryKey={"clothes"}
+        />
+      )}
     </>
   );
 };
